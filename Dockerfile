@@ -11,6 +11,8 @@ RUN chmod +x /opt/launcher.sh                                                   
     cd /opt                                                                                     && \
     bash Anaconda.sh -b -p /opt/anaconda                                                        && \
     rm Anaconda.sh                                                                              && \
+    echo 'Installing seaborn (Python module) ...'                                               && \
+    PATH=/opt/anaconda/bin:$PATH pip install seaborn                                            && \
     echo 'Downloading Spark ...'                                                                && \
     wget -qO /opt/spark.tgz http://d3kbcqa49mib13.cloudfront.net/spark-1.6.0-bin-hadoop2.6.tgz  && \
     cd /opt                                                                                     && \
