@@ -5,7 +5,7 @@ ADD launcher.sh /opt/launcher.sh
 RUN chmod +x /opt/launcher.sh                                                                   && \
     export DEBIAN_FRONTEND=noninteractive                                                       && \
     apt-get update                                                                              && \
-    apt-get install -y wget git default-jre-headless                                            && \
+    apt-get install -y wget git default-jre-headless libsm6 libxrender1                         && \
     echo 'Downloading Anaconda ...'                                                             && \
     wget -qO /opt/Anaconda.sh https://repo.continuum.io/archive/Anaconda2-2.5.0-Linux-x86_64.sh && \
     cd /opt                                                                                     && \
