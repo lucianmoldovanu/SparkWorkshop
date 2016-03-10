@@ -1,2 +1,1 @@
-# SparkWorkshop
 SparkWorkshop
