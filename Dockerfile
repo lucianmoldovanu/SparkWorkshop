@@ -18,11 +18,11 @@ RUN chmod +x /opt/launcher.sh                                                   
     cd /opt                                                                                     && \
     echo 'Extracting Spark ...'                                                                 && \
     tar -xf spark.tgz                                                                           && \
-    mv spark-1.6.0-bin-hadoop2.6 spark                                                          && \
+    mv spark-* spark                                                                            && \
     rm spark.tgz                                                                                && \
     cd /opt/spark/conf                                                                          && \
     sed 's/INFO/ERROR/' log4j.properties.template > log4j.properties                            && \
-    echo 'spark' > slaves                                                                       && \
+    echo $(hostname) > slaves                                                                   && \
     cd /opt                                                                                     && \
     echo 'Getting SparkDatasets/SparkCode from GitHub ...'                                      && \
     git clone https://github.com/dserban/SparkDatasets.git                                      && \
