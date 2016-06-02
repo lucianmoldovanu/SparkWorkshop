@@ -1,8 +1,8 @@
 FROM ubuntu:14.04
 
-ADD launcher.sh /opt/launcher.sh
+ADD launcher.sh /usr/bin/launcher.sh
 
-RUN chmod +x /opt/launcher.sh                                                                   && \
+RUN chmod +x /usr/bin/launcher.sh                                                               && \
     export DEBIAN_FRONTEND=noninteractive                                                       && \
     apt-get -qq update                                                                          && \
     apt-get -qq -y install wget                                                                    \
