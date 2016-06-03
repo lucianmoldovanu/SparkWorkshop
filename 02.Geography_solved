@@ -1,0 +1,1032 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Dataset: Cities / Countries / Continents\n",
+    "\n",
+    "**Reminder: press Shift+Enter several times.**\n",
+    "\n",
+    "We explore a very simple dataset: the geographical hierarchy.\n",
+    "\n",
+    "First, we attempt to understand the nature of the dataset.\n",
+    "\n",
+    "Later on, we'll ask some questions and use Spark to get the answers.\n",
+    "\n",
+    "Here's where the data is located and what it looks like:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "continent_id,continent_name\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!cat /opt/SparkDatasets/geography/continents_header.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1,North America\r\n",
+      "2,South America\r\n",
+      "3,Europe\r\n",
+      "4,Africa\r\n",
+      "5,Asia\r\n",
+      "6,Oceania\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!cat /opt/SparkDatasets/geography/continents.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "country_id,continent_id,country_name\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!cat /opt/SparkDatasets/geography/countries_header.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1,1,Canada\r\n",
+      "2,1,Cuba\r\n",
+      "3,1,Mexico\r\n",
+      "4,1,United States of America\r\n",
+      "5,2,Argentina\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!head -5 /opt/SparkDatasets/geography/countries.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "79 /opt/SparkDatasets/geography/countries.csv\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!wc -l /opt/SparkDatasets/geography/countries.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "city_id,country_id,city_name\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!cat /opt/SparkDatasets/geography/cities_header.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1,59,Abuja\r\n",
+      "2,54,Accra\r\n",
+      "3,52,Addis Ababa\r\n",
+      "4,34,Amsterdam\r\n",
+      "5,68,Astana\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!head -5 /opt/SparkDatasets/geography/cities.csv"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "123 /opt/SparkDatasets/geography/cities.csv\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!wc -l /opt/SparkDatasets/geography/cities.csv"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "At some point, we are going to use the **add** operator in its capacity as a reducer function.  \n",
+    "Before we start playing with the dataset, let's bring it into our namespace."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "12\n",
+      "[1, 2, 3, 4, 5, 6]\n",
+      "aaabbb\n"
+     ]
+    }
+   ],
+   "source": [
+    "from operator import add\n",
+    "# 'add' is the (prefix) function equivalent of the '+' (infix) operator\n",
+    "# What does 'add' do besides the obvious addition of numbers?\n",
+    "print add(5,7)\n",
+    "# List concatenation\n",
+    "print add( [1,2,3], [4,5,6] )\n",
+    "# String concatenation too (this will become important in a minute)\n",
+    "print add( 'aaa', 'bbb' )"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "raw_continents_rdd = sc.textFile( '/opt/SparkDatasets/geography/continents.csv' )\n",
+    "raw_countries_rdd  = sc.textFile( '/opt/SparkDatasets/geography/countries.csv'  )\n",
+    "raw_cities_rdd     = sc.textFile( '/opt/SparkDatasets/geography/cities.csv'     )\n",
+    "\n",
+    "print 'OK'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Let's explore the continents first"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[u'1,North America', u'2,South America', u'3,Europe']"
+      ]
+     },
+     "execution_count": 12,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Take a look at the first 3 elements in the continents RDD\n",
+    "raw_continents_rdd.take(3)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Turn each element of the RDD into a list of strings\n",
+    "temp_continents_rdd = raw_continents_rdd.map( lambda s: s.split(',') )\n",
+    "\n",
+    "print 'OK'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[[u'1', u'North America'],\n",
+       " [u'2', u'South America'],\n",
+       " [u'3', u'Europe'],\n",
+       " [u'4', u'Africa'],\n",
+       " [u'5', u'Asia'],\n",
+       " [u'6', u'Oceania']]"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# temp_continents_rdd is an RDD of lists of strings, not quite what we want\n",
+    "temp_continents_rdd.collect()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Tuples are better\n",
+    "continents_rdd = raw_continents_rdd.map( lambda s: s.split(',') ).map( lambda l: ( int(l[0]), l[1] ) )\n",
+    "\n",
+    "print 'OK'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[(1, u'North America'),\n",
+       " (2, u'South America'),\n",
+       " (3, u'Europe'),\n",
+       " (4, u'Africa'),\n",
+       " (5, u'Asia'),\n",
+       " (6, u'Oceania')]"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "continents_rdd.collect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Let us now ask the first interesting question\n",
+    "\n",
+    "In which countries are there at least two cities the names of which start with the same letter?\n",
+    "\n",
+    "We now explore how we might answer this question, and our intuition already tells us that some grouping of data will need to be done."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "temp_cities_rdd = raw_cities_rdd.map( lambda s: s.split(',') )\n",
+    "\n",
+    "print 'OK'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[[u'1', u'59', u'Abuja'],\n",
+       " [u'2', u'54', u'Accra'],\n",
+       " [u'3', u'52', u'Addis Ababa'],\n",
+       " [u'4', u'34', u'Amsterdam'],\n",
+       " [u'5', u'68', u'Astana'],\n",
+       " [u'6', u'10', u'Asuncion'],\n",
+       " [u'7', u'24', u'Athens'],\n",
+       " [u'8', u'61', u'Baku'],\n",
+       " [u'9', u'76', u'Bangkok'],\n",
+       " [u'10', u'49', u'Bangui']]"
+      ]
+     },
+     "execution_count": 18,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "temp_cities_rdd.take(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's 'reshape' the RDD for more convenience.\n",
+    "\n",
+    "'Reshape' is a misnomer here, because RDDs are in fact immutable. What we mean is 'generate a new RDD with almost the same data, but arranged in a slightly different shape'."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "cities_rdd = \\\n",
+    "raw_cities_rdd \\\n",
+    ".map( lambda s: s.split(',') ) \\\n",
+    ".map( lambda l: ( ( int(l[1]), l[2][0] ), [ l[2] ] ) )\n",
+    "                  # int(l[1]) is the country_id\n",
+    "                             # l[2] is the city_name\n",
+    "                             # l[2][0] is the initial of the city_name\n",
+    "                                        # [ l[2] ] is a one-element list\n",
+    "                                        # That one element is the city_name\n",
+    "\n",
+    "print 'OK'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[((59, u'A'), [u'Abuja']),\n",
+       " ((54, u'A'), [u'Accra']),\n",
+       " ((52, u'A'), [u'Addis Ababa']),\n",
+       " ((34, u'A'), [u'Amsterdam']),\n",
+       " ((68, u'A'), [u'Astana']),\n",
+       " ((10, u'A'), [u'Asuncion']),\n",
+       " ((24, u'A'), [u'Athens']),\n",
+       " ((61, u'B'), [u'Baku']),\n",
+       " ((76, u'B'), [u'Bangkok']),\n",
+       " ((49, u'B'), [u'Bangui'])]"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cities_rdd.take(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Group by key (left element of outer tuple)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[((67, u'N'), [u'Nagoya']),\n",
+       " ((65, u'B'), [u'Bombay']),\n",
+       " ((45, u'B'), [u'Birmingham', u'Bristol']),\n",
+       " ((67, u'T'), [u'Tokyo']),\n",
+       " ((15, u'B'), [u'Brussels']),\n",
+       " ((34, u'A'), [u'Amsterdam']),\n",
+       " ((57, u'R'), [u'Rabat']),\n",
+       " ((42, u'M'), [u'Madrid']),\n",
+       " ((52, u'A'), [u'Addis Ababa']),\n",
+       " ((6, u'S'), [u'Sao Paolo']),\n",
+       " ((55, u'N'), [u'Nairobi']),\n",
+       " ((61, u'B'), [u'Baku']),\n",
+       " ((4, u'C'), [u'Chicago']),\n",
+       " ((59, u'L'), [u'Lagos']),\n",
+       " ((58, u'M'), [u'Maputo']),\n",
+       " ((5, u'B'), [u'Buenos Aires']),\n",
+       " ((25, u'B'), [u'Budapest']),\n",
+       " ((70, u'U'), [u'Ulaanbaatar']),\n",
+       " ((32, u'S'), [u'Skopje']),\n",
+       " ((45, u'N'), [u'Newcastle', u'Nottingham']),\n",
+       " ((65, u'N'), [u'New Delhi']),\n",
+       " ((72, u'K'), [u'Karachi']),\n",
+       " ((41, u'L'), [u'Ljubljana']),\n",
+       " ((23, u'H'), [u'Hamburg']),\n",
+       " ((27, u'F'), [u'Firenze']),\n",
+       " ((72, u'I'), [u'Islamabad']),\n",
+       " ((49, u'B'), [u'Bangui']),\n",
+       " ((68, u'A'), [u'Astana']),\n",
+       " ((54, u'A'), [u'Accra']),\n",
+       " ((50, u'K'), [u'Kinshasa']),\n",
+       " ((63, u'P'), [u'Phnom Penh']),\n",
+       " ((29, u'R'), [u'Riga']),\n",
+       " ((74, u'S'), [u'Seoul']),\n",
+       " ((12, u'M'), [u'Montevideo']),\n",
+       " ((64, u'S'), [u'Shenzhen']),\n",
+       " ((27, u'R'), [u'Rome']),\n",
+       " ((14, u'G'), [u'Graz']),\n",
+       " ((23, u'B'), [u'Berlin', u'Bonn']),\n",
+       " ((75, u'T'), [u'Taipei']),\n",
+       " ((38, u'S'), [u'Sibiu']),\n",
+       " ((31, u'V'), [u'Vilnius']),\n",
+       " ((33, u'P'), [u'Podgorica']),\n",
+       " ((10, u'A'), [u'Asuncion']),\n",
+       " ((4, u'S'), [u'San Francisco']),\n",
+       " ((78, u'C'), [u'Canberra']),\n",
+       " ((23, u'F'), [u'Frankfurt']),\n",
+       " ((39, u'B'), [u'Belgrade']),\n",
+       " ((27, u'T'), [u'Torino']),\n",
+       " ((45, u'L'), [u'Liverpool', u'London']),\n",
+       " ((21, u'H'), [u'Helsinki']),\n",
+       " ((14, u'S'), [u'Salzburg']),\n",
+       " ((37, u'L'), [u'Lisbon']),\n",
+       " ((16, u'S'), [u'Sofia']),\n",
+       " ((64, u'G'), [u'Guangzhou']),\n",
+       " ((24, u'A'), [u'Athens']),\n",
+       " ((38, u'C'), [u'Cluj']),\n",
+       " ((17, u'Z'), [u'Zagreb']),\n",
+       " ((36, u'W'), [u'Warsaw']),\n",
+       " ((77, u'H'), [u'Hanoi']),\n",
+       " ((48, u'Y'), [u'Yaounde']),\n",
+       " ((53, u'L'), [u'Libreville']),\n",
+       " ((11, u'L'), [u'Lima']),\n",
+       " ((60, u'D'), [u'Dakar']),\n",
+       " ((13, u'C'), [u'Caracas']),\n",
+       " ((27, u'M'), [u'Milano']),\n",
+       " ((22, u'P'), [u'Paris']),\n",
+       " ((28, u'P'), [u'Pristina']),\n",
+       " ((79, u'W'), [u'Wellington']),\n",
+       " ((18, u'P'), [u'Prague']),\n",
+       " ((14, u'V'), [u'Vienna']),\n",
+       " ((38, u'B'), [u'Brasov', u'Bucharest']),\n",
+       " ((19, u'C'), [u'Copenhagen']),\n",
+       " ((46, u'L'), [u'Luanda']),\n",
+       " ((62, u'D'), [u'Dhaka']),\n",
+       " ((3, u'M'), [u'Mexico City']),\n",
+       " ((64, u'B'), [u'Beijing']),\n",
+       " ((43, u'S'), [u'Stockholm']),\n",
+       " ((44, u'B'), [u'Basel', u'Bern']),\n",
+       " ((6, u'R'), [u'Rio de Janeiro']),\n",
+       " ((8, u'B'), [u'Bogota']),\n",
+       " ((45, u'C'), [u'Cambridge', u'Coventry']),\n",
+       " ((67, u'K'), [u'Kyoto']),\n",
+       " ((4, u'P'), [u'Philadelphia']),\n",
+       " ((26, u'D'), [u'Dublin']),\n",
+       " ((45, u'G'), [u'Glasgow', u'Gloucester']),\n",
+       " ((51, u'C'), [u'Cairo']),\n",
+       " ((67, u'O'), [u'Osaka']),\n",
+       " ((71, u'K'), [u'Kathmandu']),\n",
+       " ((76, u'B'), [u'Bangkok']),\n",
+       " ((59, u'A'), [u'Abuja']),\n",
+       " ((30, u'V'), [u'Vaduz']),\n",
+       " ((40, u'B'), [u'Bratislava']),\n",
+       " ((45, u'O'), [u'Oxford']),\n",
+       " ((14, u'L'), [u'Linz']),\n",
+       " ((64, u'T'), [u'Tianjin']),\n",
+       " ((47, u'G'), [u'Gaborone']),\n",
+       " ((7, u'S'), [u'Santiago']),\n",
+       " ((23, u'M'), [u'Munich']),\n",
+       " ((69, u'K'), [u'Kuala Lumpur']),\n",
+       " ((56, u'T'), [u'Tripoli']),\n",
+       " ((4, u'H'), [u'Houston']),\n",
+       " ((44, u'Z'), [u'Zurich']),\n",
+       " ((2, u'H'), [u'Havana']),\n",
+       " ((20, u'T'), [u'Tallinn']),\n",
+       " ((65, u'M'), [u'Mumbai']),\n",
+       " ((66, u'J'), [u'Jakarta']),\n",
+       " ((9, u'Q'), [u'Quito']),\n",
+       " ((38, u'T'), [u'Timisoara']),\n",
+       " ((4, u'L'), [u'Los Angeles']),\n",
+       " ((67, u'S'), [u'Sapporo']),\n",
+       " ((35, u'O'), [u'Oslo']),\n",
+       " ((1, u'O'), [u'Ottawa']),\n",
+       " ((42, u'B'), [u'Barcelona']),\n",
+       " ((4, u'N'), [u'New York City']),\n",
+       " ((73, u'M'), [u'Manila'])]"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cities_rdd.reduceByKey(add).collect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We notice on the right hand side only a few lists have more than 1 city_name in them.  \n",
+    "So we write a filter function to only keep those."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[((45, u'B'), [u'Birmingham', u'Bristol']),\n",
+       " ((45, u'N'), [u'Newcastle', u'Nottingham']),\n",
+       " ((23, u'B'), [u'Berlin', u'Bonn']),\n",
+       " ((45, u'L'), [u'Liverpool', u'London']),\n",
+       " ((38, u'B'), [u'Brasov', u'Bucharest']),\n",
+       " ((44, u'B'), [u'Basel', u'Bern']),\n",
+       " ((45, u'C'), [u'Cambridge', u'Coventry']),\n",
+       " ((45, u'G'), [u'Glasgow', u'Gloucester'])]"
+      ]
+     },
+     "execution_count": 22,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cities_rdd \\\n",
+    ".reduceByKey(add) \\\n",
+    ".filter( lambda ((country_id, city_initial), city_names_list): len(city_names_list) > 1 ) \\\n",
+    ".collect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "collapsed": true
+   },
+   "source": [
+    "We no longer need the city initials, so let's get rid of them."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[(45, [u'Birmingham', u'Bristol']),\n",
+       " (45, [u'Newcastle', u'Nottingham']),\n",
+       " (23, [u'Berlin', u'Bonn']),\n",
+       " (45, [u'Liverpool', u'London']),\n",
+       " (38, [u'Brasov', u'Bucharest']),\n",
+       " (44, [u'Basel', u'Bern']),\n",
+       " (45, [u'Cambridge', u'Coventry']),\n",
+       " (45, [u'Glasgow', u'Gloucester'])]"
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "grouped_cities_rdd = \\\n",
+    "cities_rdd \\\n",
+    ".reduceByKey(add) \\\n",
+    ".filter( lambda ((country_id, city_initial), city_names_list): len(city_names_list) > 1 ) \\\n",
+    ".map( lambda ((country_id, city_initial), city_names_list): (country_id, city_names_list) ) \\\n",
+    ".cache()\n",
+    "\n",
+    "grouped_cities_rdd.collect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We would now like to replace country IDs with the names of those respective countries."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "countries_rdd = \\\n",
+    "raw_countries_rdd \\\n",
+    ".map( lambda s: s.split(',') ) \\\n",
+    ".map( lambda l: ( int(l[0]), l[2] ) ) \\\n",
+    ".cache()\n",
+    "\n",
+    "print 'OK'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[(1, u'Canada'),\n",
+       " (2, u'Cuba'),\n",
+       " (3, u'Mexico'),\n",
+       " (4, u'United States of America'),\n",
+       " (5, u'Argentina'),\n",
+       " (6, u'Brazil'),\n",
+       " (7, u'Chile'),\n",
+       " (8, u'Colombia'),\n",
+       " (9, u'Ecuador'),\n",
+       " (10, u'Paraguay')]"
+      ]
+     },
+     "execution_count": 25,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "countries_rdd.take(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We now join the two pairwise RDDs, since they both have country_id as the key."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[(44, ([u'Basel', u'Bern'], u'Switzerland')),\n",
+       " (45, ([u'Birmingham', u'Bristol'], u'United Kingdom')),\n",
+       " (45, ([u'Newcastle', u'Nottingham'], u'United Kingdom')),\n",
+       " (45, ([u'Liverpool', u'London'], u'United Kingdom')),\n",
+       " (45, ([u'Cambridge', u'Coventry'], u'United Kingdom')),\n",
+       " (45, ([u'Glasgow', u'Gloucester'], u'United Kingdom')),\n",
+       " (38, ([u'Brasov', u'Bucharest'], u'Romania')),\n",
+       " (23, ([u'Berlin', u'Bonn'], u'Germany'))]"
+      ]
+     },
+     "execution_count": 26,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "grouped_cities_rdd_after_join = \\\n",
+    "grouped_cities_rdd \\\n",
+    ".join(countries_rdd) \\\n",
+    ".cache()\n",
+    "\n",
+    "grouped_cities_rdd_after_join.collect()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[(u'Switzerland', [u'Basel', u'Bern']),\n",
+       " (u'United Kingdom', [u'Birmingham', u'Bristol']),\n",
+       " (u'United Kingdom', [u'Newcastle', u'Nottingham']),\n",
+       " (u'United Kingdom', [u'Liverpool', u'London']),\n",
+       " (u'United Kingdom', [u'Cambridge', u'Coventry']),\n",
+       " (u'United Kingdom', [u'Glasgow', u'Gloucester']),\n",
+       " (u'Romania', [u'Brasov', u'Bucharest']),\n",
+       " (u'Germany', [u'Berlin', u'Bonn'])]"
+      ]
+     },
+     "execution_count": 27,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "nicer_looking_grouped_cities_rdd = \\\n",
+    "grouped_cities_rdd_after_join \\\n",
+    ".map( lambda (country_id, (city_names_list, country_name)): (country_name, city_names_list) )\n",
+    "\n",
+    "nicer_looking_grouped_cities_rdd.collect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "At the end of such a convoluted data pipeline, it's fun to look at Spark's internal representation of it (in the form of a DAG - Directed Acyclic Graph).\n",
+    "\n",
+    "The DAG is conceptually similar to the 'explain plan' graph from the SQL world."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(4) PythonRDD[36] at collect at <ipython-input-27-f334223b7ac5>:3 []\n",
+      " |  PythonRDD[35] at RDD at PythonRDD.scala:43 []\n",
+      " |      CachedPartitions: 4; MemorySize: 629.0 B; ExternalBlockStoreSize: 0.0 B; DiskSize: 0.0 B\n",
+      " |  MapPartitionsRDD[34] at mapPartitions at PythonRDD.scala:374 []\n",
+      " |  ShuffledRDD[33] at partitionBy at NativeMethodAccessorImpl.java:-2 []\n",
+      " +-(4) PairwiseRDD[32] at join at <ipython-input-26-6f2fcb2451eb>:1 []\n",
+      "    |  PythonRDD[31] at join at <ipython-input-26-6f2fcb2451eb>:1 []\n",
+      "    |  UnionRDD[30] at union at NativeMethodAccessorImpl.java:-2 []\n",
+      "    |  PythonRDD[28] at RDD at PythonRDD.scala:43 []\n",
+      "    |  PythonRDD[25] at RDD at PythonRDD.scala:43 []\n",
+      "    |      CachedPartitions: 2; MemorySize: 452.0 B; ExternalBlockStoreSize: 0.0 B; DiskSize: 0.0 B\n",
+      "    |  MapPartitionsRDD[24] at mapPartitions at PythonRDD.scala:374 []\n",
+      "    |  ShuffledRDD[23] at partitionBy at NativeMethodAccessorImpl.java:-2 []\n",
+      "    +-(2) PairwiseRDD[22] at reduceByKey at <ipython-input-23-cbdef7d9a154>:1 []\n",
+      "       |  PythonRDD[21] at reduceByKey at <ipython-input-23-cbdef7d9a154>:1 []\n",
+      "       |  /opt/SparkDatasets/geography/cities.csv MapPartitionsRDD[5] at textFile at NativeMethodAccessorImpl.java:-2 []\n",
+      "       |  /opt/SparkDatasets/geography/cities.csv HadoopRDD[4] at textFile at NativeMethodAccessorImpl.java:-2 []\n",
+      "    |  PythonRDD[29] at RDD at PythonRDD.scala:43 []\n",
+      "    |  PythonRDD[26] at RDD at PythonRDD.scala:43 []\n",
+      "    |      CachedPartitions: 2; MemorySize: 1417.0 B; ExternalBlockStoreSize: 0.0 B; DiskSize: 0.0 B\n",
+      "    |  /opt/SparkDatasets/geography/countries.csv MapPartitionsRDD[3] at textFile at NativeMethodAccessorImpl.java:-2 []\n",
+      "    |  /opt/SparkDatasets/geography/countries.csv HadoopRDD[2] at textFile at NativeMethodAccessorImpl.java:-2 []\n"
+     ]
+    }
+   ],
+   "source": [
+    "print nicer_looking_grouped_cities_rdd.toDebugString()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Exercise**\n",
+    "\n",
+    "Perform a similar analysis to the one above, but with same-initial cities per continent, instead of per country."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "#get mapping tuples (country_id, continent_id)\n",
+    "ctr_cont_map_rdd = raw_countries_rdd \\\n",
+    ".map( lambda s: s.split(',') ) \\\n",
+    ".map( lambda l: ( int(l[0]), int(l[1]) ) )\n",
+    "\n",
+    "ctr_cont_map_rdd.take(10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "#get tuples (country_id, (city_initial, list_of_cities))\n",
+    "ctr_cit_list_rdd = cities_rdd \\\n",
+    ".reduceByKey(add) \\\n",
+    ".map(lambda ((ctr_id, first_ltr), cit_list): (ctr_id, (first_ltr, cit_list)))\n",
+    "\n",
+    "ctr_cit_list_rdd.take(10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "#get tuples (continent_id, list_of_cities) by city_initial\n",
+    "cont_cit_list_rdd = ctr_cit_list_rdd \\\n",
+    ".join(ctr_cont_map_rdd) \\\n",
+    ".map(lambda (ctr_id, ((first_ltr, cit_list), cont_id)): ((cont_id, first_ltr), cit_list)) \\\n",
+    ".reduceByKey(add) \\\n",
+    ".map(lambda  ((cont_id, first_ltr), cit_list): (cont_id, cit_list))\n",
+    "\n",
+    "cont_cit_list_rdd.take(10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "#sort in descending number of cities with similar initial (first letter in name)\n",
+    "#replace continent_id with continent_name\n",
+    "#add city count\n",
+    "#filter pairs where the number of cities in group is > 2\n",
+    "#get tuple (continent_name, city_initial, list_of_cities)\n",
+    "nice_cont_cit_list = cont_cit_list_rdd \\\n",
+    ".join(continents_rdd) \\\n",
+    ".map(lambda (cont_id, (cit_list, cont_name)): (cont_name, cit_list)) \\\n",
+    ".sortBy(lambda (cont_name, cit_list): len(cit_list), ascending=False ) \\\n",
+    ".map(lambda (cont_name, cit_list): (cont_name, len(cit_list), cit_list)) \\\n",
+    ".filter(lambda (cont_name, num_cit, cit_list): num_cit > 2)\n",
+    "\n",
+    "nice_cont_cit_list.collect()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 2",
+   "language": "python",
+   "name": "python2"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.11"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
